@@ -1,49 +1,132 @@
-<div class="admin-form">
-  <h2>Add Organization Admin</h2>
-  <input type="text" placeholder="Name" [(ngModel)]="name">
-  <input type="email" placeholder="Email" [(ngModel)]="email">
-  <input type="text" placeholder="Phone Number" [(ngModel)]="phoneNumber">
-  <input type="text" placeholder="Designation" [(ngModel)]="designation">
-  <input type="file" (change)="onFileSelected($event)">
-  <button (click)="createAdmin()">Create Admin</button>
-  <p *ngIf="message" class="message">{{ message }}</p>
+<div class="dashboard-wrapper">
+  <!-- 🧭 Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <div class="logo">🏢</div>
+      <h3>Org Dashboard</h3>
+    </div>
+
+    <nav class="sidebar-menu">
+      <button
+        class="menu-item"
+        [class.active]="activeSection === 'viewAdmins'"
+        (click)="setActiveSection('viewAdmins')"
+      >
+        <span class="icon">👥</span> View Admins
+      </button>
+      <button
+        class="menu-item"
+        [class.active]="activeSection === 'addAdmin'"
+        (click)="setActiveSection('addAdmin')"
+      >
+        <span class="icon">➕</span> Add Admin
+      </button>
+      <button class="menu-item logout" (click)="logout()">
+        <span class="icon">🚪</span> Logout
+      </button>
+    </nav>
+  </aside>
+
+  <!-- 🏗️ Main Content -->
+  <main class="main-content">
+    <div class="top-header">
+      <div class="header-left">
+        <h1>Organization Dashboard</h1>
+        <p class="subtitle">Manage Organization Admins</p>
+      </div>
+      <div class="header-right">
+        <button class="logout-btn-header" (click)="logout()">
+          <span class="icon">🚪</span> Logout
+        </button>
+      </div>
+    </div>
+
+    <!-- Global message -->
+    <div *ngIf="message" class="toast" [class.success]="messageType==='success'" [class.error]="messageType==='error'">
+      {{ message }}
+    </div>
+
+    <!-- Loading -->
+    <div *ngIf="loading" class="loading">
+      <div class="spinner"></div>
+      <p>Loading...</p>
+    </div>
+
+    <!-- ========== Add Admin section ========== -->
+    <section class="admins-section" *ngIf="activeSection === 'addAdmin' && !loading">
+      <div class="admin-form card">
+        <h3>Add Organization Admin</h3>
+
+        <input type="text" placeholder="Name" [(ngModel)]="name" />
+        <input type="email" placeholder="Email" [(ngModel)]="email" />
+        <input type="text" placeholder="Phone Number" [(ngModel)]="phoneNumber" />
+        <input type="text" placeholder="Designation" [(ngModel)]="designation" />
+        <input type="file" (change)="onFileSelected($event)" />
+
+        <button (click)="createAdmin()">Create Admin</button>
+      </div>
+    </section>
+
+    <!-- ========== View Admins section ========== -->
+    <section class="admins-section" *ngIf="activeSection === 'viewAdmins' && !loading">
+      <div class="section-header">
+        <div class="header-info">
+          <h2>Admins</h2>
+          <p class="section-subtitle">Add or manage organization admins</p>
+        </div>
+      </div>
+
+      <div class="admin-list" *ngIf="admins.length > 0; else noAdmins">
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Phone</th>
+                <th>Designation</th>
+                <th>Status</th>
+                <th style="width: 220px;">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let admin of admins">
+                <td>{{ admin.name }}</td>
+                <td>{{ admin.email }}</td>
+                <td>{{ admin.phoneNumber }}</td>
+                <td>{{ admin.designation }}</td>
+                <td>
+                  <span [class]="statusBadgeClass(admin.status)">
+                    {{ admin.status }}
+                  </span>
+                </td>
+                <td>
+                  <button
+                    *ngIf="admin.status === 'ACTIVE'"
+                    class="btn-red"
+                    (click)="deactivateAdminWithPrompt(1, admin.organizationAdminId)"
+                    title="Deactivate"
+                  >
+                    Deactivate
+                  </button>
+                  <button
+                    *ngIf="admin.status === 'DEACTIVATED'"
+                    class="btn-green"
+                    (click)="reactivateAdmin(1, admin.organizationAdminId)"
+                    title="Reactivate"
+                  >
+                    Reactivate
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <ng-template #noAdmins>
+        <p>No admins found.</p>
+      </ng-template>
+    </section>
+  </main>
 </div>
-
-<hr>
-
-<div class="admin-list" *ngIf="admins.length > 0">
-  <h2>Organization Admins</h2>
-  <table>
-    <thead>
-      <tr>
-        <th>Name</th>
-        <th>Email</th>
-        <th>Phone</th>
-        <th>Designation</th>
-        <th>Status</th>
-        <th>Actions</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr *ngFor="let admin of admins">
-        <td>{{ admin.name }}</td>
-        <td>{{ admin.email }}</td>
-        <td>{{ admin.phoneNumber }}</td>
-        <td>{{ admin.designation }}</td>
-        <td>{{ admin.status }}</td>
-        <td>
-          <button *ngIf="admin.status === 'ACTIVE'" 
-                  (click)="deactivateAdminWithPrompt(1, admin.organizationAdminId)">
-            Deactivate
-          </button>
-          <button *ngIf="admin.status === 'DEACTIVATED'" 
-                  (click)="reactivateAdmin(1, admin.organizationAdminId)">
-            Reactivate
-          </button>
-        </td>
-      </tr>
-    </tbody>
-  </table>
-</div>
-
-<p *ngIf="!admins.length && !loading">No admins found.</p>

@@ -473,6 +473,11 @@
       color: #0c5460;
     }
 
+    .badge-secondary {
+      background: #e9ecef;
+      color: #495057;
+    }
+
     .table-container {
       overflow-x: auto;
       border-radius: 10px;
@@ -513,6 +518,50 @@
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
       gap: 20px;
+    }
+
+    .salary-breakdown {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      padding: 20px;
+      border-radius: 10px;
+      color: white;
+      margin-bottom: 20px;
+    }
+
+    .salary-breakdown h4 {
+      margin-bottom: 15px;
+      font-size: 18px;
+    }
+
+    .salary-row {
+      display: flex;
+      justify-content: space-between;
+      margin: 8px 0;
+      padding: 5px 0;
+    }
+
+    .salary-row.total {
+      border-top: 2px solid white;
+      padding-top: 10px;
+      margin-top: 10px;
+      font-size: 20px;
+      font-weight: bold;
+    }
+
+    .info-box {
+      background: #f8f9fa;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+
+    .info-box h4 {
+      color: #2c3e50;
+    }
+
+    .info-box p {
+      margin: 5px 0;
+      color: #495057;
     }
 
     @media (max-width: 768px) {
@@ -589,6 +638,7 @@
     <button [class.active]="activeTab === 'account'" (click)="setActiveTab('account')">
       🏦 Corporate Account
     </button>
+    <button (click)="router.navigate(['/org-admin/concerns'])">📢 Concerns</button>
   </div>
 
   <!-- Loading Spinner -->
@@ -665,12 +715,159 @@
   <div *ngIf="activeTab === 'employees'" class="tab-content">
     <div class="section-header">
       <h2>Employee Management</h2>
-      <button *ngIf="!showEmployeeForm" (click)="showEmployeeForm = true" class="btn-primary">
+      <button *ngIf="!showEmployeeForm && !showBankAccountForm && !showSalaryForm" (click)="showEmployeeForm = true" class="btn-primary">
         ➕ Add Employee
       </button>
-      <button *ngIf="showEmployeeForm" (click)="resetEmployeeForm()" class="btn-secondary">
-        ❌ Cancel
+      <button *ngIf="showEmployeeForm || showBankAccountForm || showSalaryForm" (click)="resetEmployeeForm(); resetBankAccountForm(); resetSalaryForm()" class="btn-secondary">
+        ❌ Cancel All Forms
       </button>
+    </div>
+
+    <!-- Add Bank Account Form -->
+    <div *ngIf="showBankAccountForm && selectedEmployee" class="form-card">
+      <h3>🏦 Add Bank Account for {{selectedEmployee.name}}</h3>
+      <p style="color: #6c757d; margin-bottom: 20px;">
+        💡 <strong>Note:</strong> If the bank is the same as your organization's bank, the account will be auto-approved. 
+        Otherwise, it requires Bank Admin approval.
+      </p>
+      
+      <form>
+        <div class="info-box">
+          <h4 style="margin-bottom: 10px; color: #2c3e50;">Employee Details</h4>
+          <p><strong>Name:</strong> {{selectedEmployee.name}}</p>
+          <p><strong>Email:</strong> {{selectedEmployee.email}}</p>
+          <p><strong>Designation:</strong> {{selectedEmployee.designation}}</p>
+          <p><strong>Department:</strong> {{selectedEmployee.department}}</p>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Bank Name *</label>
+            <input type="text" [(ngModel)]="bankAccountForm.bankName" name="bankName" 
+                   placeholder="Enter bank name (e.g., HDFC Bank, SBI)" required>
+            <small>Enter the full name of the bank</small>
+          </div>
+          <div class="form-group">
+            <label>Branch</label>
+            <input type="text" [(ngModel)]="bankAccountForm.branch" name="branch" 
+                   placeholder="Enter branch name (e.g., Mumbai Main)">
+            <small>Optional: Branch location</small>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Account Number *</label>
+            <input type="text" [(ngModel)]="bankAccountForm.accountNumber" name="accountNumber" 
+                   placeholder="Enter account number" required maxlength="20">
+            <small>Enter valid bank account number</small>
+          </div>
+          <div class="form-group">
+            <label>IFSC Code *</label>
+            <input type="text" [(ngModel)]="bankAccountForm.ifscCode" name="ifscCode" 
+                   placeholder="e.g., HDFC0001234" required maxlength="11" 
+                   style="text-transform: uppercase;">
+            <small>11-character IFSC code</small>
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 10px; margin-top: 20px;">
+          <button type="button" (click)="addEmployeeBankAccount()" class="btn-success" [disabled]="loading">
+            {{loading ? 'Adding Account...' : '✅ Add Bank Account'}}
+          </button>
+          <button type="button" (click)="resetBankAccountForm()" class="btn-secondary">
+            ❌ Cancel
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Create Salary Form -->
+    <div *ngIf="showSalaryForm && selectedEmployee" class="form-card">
+      <h3>💰 Create Salary for {{selectedEmployee.name}}</h3>
+      <p style="color: #6c757d; margin-bottom: 20px;">
+        💼 Set up the monthly salary structure for this employee
+      </p>
+      
+      <form>
+        <div class="info-box">
+          <h4 style="margin-bottom: 10px; color: #2c3e50;">Employee & Bank Details</h4>
+          <p><strong>Name:</strong> {{selectedEmployee.name}}</p>
+          <p><strong>Designation:</strong> {{selectedEmployee.designation}}</p>
+          <p><strong>Department:</strong> {{selectedEmployee.department}}</p>
+          <p *ngIf="selectedEmployee.bankAccount"><strong>Bank:</strong> {{selectedEmployee.bankAccount.bankName}}</p>
+          <p *ngIf="selectedEmployee.bankAccount"><strong>Account:</strong> {{selectedEmployee.bankAccount.accountNumber}}</p>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Basic Salary *</label>
+            <input type="number" [(ngModel)]="salaryForm.basicSalary" name="basicSalary" 
+                   placeholder="Enter basic salary" min="0" step="100" required>
+            <small>Minimum basic salary component (Required)</small>
+          </div>
+          <div class="form-group">
+            <label>HRA (House Rent Allowance)</label>
+            <input type="number" [(ngModel)]="salaryForm.hra" name="hra" 
+                   placeholder="Enter HRA amount" min="0" step="100">
+            <small>Typically 40-50% of basic salary</small>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Other Allowances</label>
+            <input type="number" [(ngModel)]="salaryForm.allowances" name="allowances" 
+                   placeholder="Enter total allowances" min="0" step="100">
+            <small>Travel, medical, special allowances, etc.</small>
+          </div>
+          <div class="form-group">
+            <label>Deductions</label>
+            <input type="number" [(ngModel)]="salaryForm.deductions" name="deductions" 
+                   placeholder="Enter total deductions" min="0" step="100">
+            <small>PF, TDS, insurance, loans, etc.</small>
+          </div>
+        </div>
+
+        <!-- Salary Breakdown -->
+        <div class="salary-breakdown">
+          <h4>💰 Salary Breakdown</h4>
+          <div class="salary-row">
+            <span>Basic Salary:</span>
+            <strong>₹{{salaryForm.basicSalary | number:'1.2-2'}}</strong>
+          </div>
+          <div class="salary-row">
+            <span>HRA:</span>
+            <strong>₹{{salaryForm.hra | number:'1.2-2'}}</strong>
+          </div>
+          <div class="salary-row">
+            <span>Other Allowances:</span>
+            <strong>₹{{salaryForm.allowances | number:'1.2-2'}}</strong>
+          </div>
+          <div class="salary-row" style="border-top: 1px solid rgba(255,255,255,0.3); padding-top: 8px; margin-top: 8px;">
+            <span>Gross Salary:</span>
+            <strong>₹{{(salaryForm.basicSalary + salaryForm.hra + salaryForm.allowances) | number:'1.2-2'}}</strong>
+          </div>
+          <div class="salary-row">
+            <span>Deductions:</span>
+            <strong style="color: #ffcccc;">-₹{{salaryForm.deductions | number:'1.2-2'}}</strong>
+          </div>
+          <div class="salary-row total">
+            <span>Net Salary:</span>
+            <strong>₹{{(salaryForm.basicSalary + salaryForm.hra + salaryForm.allowances - salaryForm.deductions) | number:'1.2-2'}}</strong>
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 10px; margin-top: 20px;">
+          <button type="button" (click)="createSalary()" class="btn-primary" 
+                  [disabled]="loading || salaryForm.basicSalary <= 0">
+            {{loading ? 'Creating Salary...' : '✅ Create Salary'}}
+          </button>
+          <button type="button" (click)="resetSalaryForm()" class="btn-secondary">
+            ❌ Cancel
+          </button>
+        </div>
+      </form>
     </div>
 
     <!-- Add Employee Form -->
@@ -751,6 +948,7 @@
               <th>Designation</th>
               <th>Department</th>
               <th>Status</th>
+              <th>Bank Account</th>
               <th>Joining Date</th>
               <th>Actions</th>
             </tr>
@@ -762,15 +960,57 @@
               <td>{{emp.designation}}</td>
               <td>{{emp.department}}</td>
               <td>
-                <span [class]="'badge badge-' + (emp.status === 'ACTIVE' ? 'success' : emp.status === 'PENDING_APPROVAL' ? 'warning' : 'danger')">
+                <span [class]="'badge badge-' + (emp.status === 'ACTIVE' ? 'success' : emp.status === 'PENDING_APPROVAL' ? 'warning' : emp.status === 'APPROVED' ? 'info' : 'danger')">
                   {{emp.status}}
                 </span>
               </td>
+              <td>
+                <span [ngClass]="getBankAccountBadgeClass(emp)" class="badge" style="font-size: 11px;">
+                  {{getBankAccountStatusText(emp)}}
+                </span>
+                <div *ngIf="emp.bankAccount && emp.bankAccount.status === 'APPROVED'" 
+                     style="margin-top: 5px; font-size: 10px; color: #6c757d;">
+                  {{emp.bankAccount.bankName}}
+                </div>
+              </td>
               <td>{{emp.joiningDate | date:'mediumDate'}}</td>
               <td>
-                <button *ngIf="emp.status === 'ACTIVE'" (click)="openSalaryForm(emp)" class="btn-primary" style="padding: 6px 12px; font-size: 13px;">
-                  💰 Salary
+                <!-- Show "Add Account" button if employee needs bank account -->
+                <button *ngIf="needsBankAccount(emp)" 
+                        (click)="openBankAccountForm(emp)" 
+                        class="btn-success" 
+                        style="padding: 6px 12px; font-size: 13px; margin-right: 5px;">
+                  🏦 Add Account
                 </button>
+                
+                <!-- Show "Create Salary" button if ready -->
+                <button *ngIf="canCreateSalary(emp)" 
+                        (click)="openSalaryForm(emp)" 
+                        class="btn-primary" 
+                        style="padding: 6px 12px; font-size: 13px;">
+                  💰 Create Salary
+                </button>
+                
+                <!-- Show waiting message if bank account is pending -->
+                <span *ngIf="isBankAccountPending(emp)"
+                      class="badge badge-warning"
+                      style="font-size: 11px;">
+                  ⏳ Account Pending Approval
+                </span>
+                
+                <!-- Show message if employee is pending approval -->
+                <span *ngIf="emp.status === 'PENDING_APPROVAL'"
+                      class="badge badge-warning"
+                      style="font-size: 11px;">
+                  ⏳ Employee Pending Approval
+                </span>
+                
+                <!-- Show active status -->
+                <span *ngIf="emp.status === 'ACTIVE' && !canCreateSalary(emp) && !needsBankAccount(emp) && !isBankAccountPending(emp)" 
+                      class="badge badge-success" 
+                      style="padding: 6px 12px; font-size: 13px;">
+                  ✅ Active
+                </span>
               </td>
             </tr>
           </tbody>
@@ -967,7 +1207,7 @@
       </div>
     </div>
 
-    <!-- Approved Payments -->
+    <!-- All Payments -->
     <div class="section">
       <h3>✅ All Payments ({{vendorPayments.length}})</h3>
       <div class="table-container">
@@ -1005,143 +1245,134 @@
     </div>
   </div>
 
-  <!-- Salaries Tab -->
-  <div *ngIf="activeTab === 'salaries'" class="tab-content">
-    <div class="section-header">
-      <h2>Salary Management</h2>
-    </div>
+  <!-- Replace the "Request Disbursement" section in your Salaries Tab -->
 
-    <!-- Create Salary Form -->
-    <div *ngIf="showSalaryForm && selectedEmployee" class="form-card">
-      <h3>Create Salary for {{selectedEmployee.name}}</h3>
-      <form>
-        <div class="form-row">
-          <div class="form-group">
-            <label>Basic Salary *</label>
-            <input type="number" [(ngModel)]="salaryForm.basicSalary" name="basicSalary" 
-                   placeholder="Enter basic salary" min="0" step="0.01" required>
-          </div>
-          <div class="form-group">
-            <label>HRA (House Rent Allowance)</label>
-            <input type="number" [(ngModel)]="salaryForm.hra" name="hra" 
-                   placeholder="Enter HRA" min="0" step="0.01">
-          </div>
-        </div>
+<!-- Salaries Tab - Inside the tab-content -->
+<div *ngIf="activeTab === 'salaries'" class="tab-content">
+  <div class="section-header">
+    <h2>Salary Management</h2>
+  </div>
 
-        <div class="form-row">
-          <div class="form-group">
-            <label>Other Allowances</label>
-            <input type="number" [(ngModel)]="salaryForm.allowances" name="allowances" 
-                   placeholder="Enter allowances" min="0" step="0.01">
-          </div>
-          <div class="form-group">
-            <label>Deductions</label>
-            <input type="number" [(ngModel)]="salaryForm.deductions" name="deductions" 
-                   placeholder="Enter deductions" min="0" step="0.01">
-          </div>
-        </div>
-
-        <div class="form-group">
-          <label>Net Salary (Calculated)</label>
-          <input type="text" 
-                 [value]="(salaryForm.basicSalary + salaryForm.hra + salaryForm.allowances - salaryForm.deductions) | number:'1.2-2'" 
-                 readonly style="background: #e9ecef; font-weight: bold; font-size: 16px;">
-        </div>
-
-        <div style="display: flex; gap: 10px;">
-          <button type="button" (click)="createSalary()" class="btn-primary" [disabled]="loading">
-            {{loading ? 'Creating...' : '✅ Create Salary'}}
-          </button>
-          <button type="button" (click)="resetSalaryForm()" class="btn-secondary">
-            ❌ Cancel
-          </button>
-        </div>
-      </form>
-    </div>
-
-    <!-- Generate Monthly Salaries -->
-    <div class="form-card">
-      <h3>📅 Generate Monthly Salaries</h3>
-      <p style="margin-bottom: 15px; color: #6c757d;">Generate salaries for all active employees for a specific month</p>
-      <div style="display: flex; gap: 15px; align-items: flex-end;">
-        <div class="form-group" style="flex: 1; margin-bottom: 0;">
-          <label>Select Month *</label>
-          <input type="month" [(ngModel)]="generateSalaryMonth" name="generateMonth" required>
-        </div>
-        <button type="button" (click)="generateMonthlySalaries()" class="btn-success" [disabled]="loading">
-          {{loading ? 'Generating...' : '🔄 Generate Salaries'}}
-        </button>
+  <!-- Generate Monthly Salaries -->
+  <div class="form-card">
+    <h3>📅 Generate Monthly Salaries</h3>
+    <p style="margin-bottom: 15px; color: #6c757d;">Generate salaries for all active employees for a specific month</p>
+    <div style="display: flex; gap: 15px; align-items: flex-end;">
+      <div class="form-group" style="flex: 1; margin-bottom: 0;">
+        <label>Select Month *</label>
+        <input type="month" [(ngModel)]="generateSalaryMonth" name="generateMonth" [max]="maxMonth" required>
       </div>
-    </div>
-
-    <!-- Disbursement Requests -->
-    <div *ngIf="disbursementRequests.length > 0" class="section">
-      <h3>💸 Disbursement Requests ({{disbursementRequests.length}})</h3>
-      <div class="table-container">
-        <table>
-          <thead>
-            <tr>
-              <th>Month</th>
-              <th>Total Amount</th>
-              <th>Status</th>
-              <th>Requested</th>
-              <th>Approved</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr *ngFor="let req of disbursementRequests">
-              <td>{{req.month | date:'MMMM yyyy'}}</td>
-              <td>₹{{req.totalAmount | number:'1.2-2'}}</td>
-              <td>
-                <span [class]="'badge badge-' + (req.status === 'APPROVED' ? 'success' : req.status === 'PENDING' ? 'warning' : 'danger')">
-                  {{req.status}}
-                </span>
-              </td>
-              <td>{{req.requestedAt | date:'short'}}</td>
-              <td>{{req.approvedAt ? (req.approvedAt | date:'short') : 'N/A'}}</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- All Salaries -->
-    <div class="section">
-      <h3>💰 All Salaries ({{salaries.length}})</h3>
-      <div class="table-container">
-        <table>
-          <thead>
-            <tr>
-              <th>Employee</th>
-              <th>Month</th>
-              <th>Basic Salary</th>
-              <th>HRA</th>
-              <th>Allowances</th>
-              <th>Deductions</th>
-              <th>Net Salary</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr *ngFor="let salary of salaries">
-              <td>{{salary.employeeName}}</td>
-              <td>{{salary.salaryMonth | date:'MMMM yyyy'}}</td>
-              <td>₹{{salary.basicSalary | number:'1.2-2'}}</td>
-              <td>₹{{salary.hra | number:'1.2-2'}}</td>
-              <td>₹{{salary.allowances | number:'1.2-2'}}</td>
-              <td>₹{{salary.deductions | number:'1.2-2'}}</td>
-              <td><strong>₹{{salary.netSalary | number:'1.2-2'}}</strong></td>
-              <td>
-                <span [class]="'badge badge-' + (salary.disbursed ? 'success' : 'warning')">
-                  {{salary.disbursed ? 'DISBURSED' : 'PENDING'}}
-                </span>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+      <button type="button" (click)="generateMonthlySalaries()" class="btn-success" [disabled]="loading || !generateSalaryMonth">
+        {{loading ? 'Generating...' : '🔄 Generate Salaries'}}
+      </button>
     </div>
   </div>
+
+  <!-- ✅ FIXED: Request Disbursement with Month Picker -->
+  <div class="form-card">
+    <h3>💸 Request Salary Disbursement</h3>
+    <p style="margin-bottom: 15px; color: #6c757d;">
+      Request approval to disburse pending salaries to employees for a specific month
+    </p>
+    <div style="display: flex; gap: 15px; align-items: flex-end;">
+      <div class="form-group" style="flex: 1; margin-bottom: 0;">
+        <label>Select Disbursement Month *</label>
+        <input 
+          type="month" 
+          [(ngModel)]="disbursementMonth" 
+          name="disbursementMonth" 
+          [max]="maxMonth"
+          required
+          placeholder="YYYY-MM">
+        <small>Select the month for which you want to disburse salaries</small>
+      </div>
+      <button 
+        type="button" 
+        (click)="requestSalaryDisbursementNew()" 
+        class="btn-primary" 
+        [disabled]="loading || !disbursementMonth">
+        {{loading ? 'Processing...' : '💰 Request Disbursement'}}
+      </button>
+    </div>
+  </div>
+
+  <!-- Disbursement Requests -->
+  <div *ngIf="disbursementRequests.length > 0" class="section">
+    <h3>💸 Disbursement Requests ({{disbursementRequests.length}})</h3>
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>Request ID</th>
+            <th>Month</th>
+            <th>Total Amount</th>
+            <th>Status</th>
+            <th>Requested</th>
+            <th>Approved</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let req of disbursementRequests">
+            <td>#{{req.requestId}}</td>
+            <td>{{req.month | date:'MMMM yyyy'}}</td>
+            <td><strong>₹{{req.totalAmount | number:'1.2-2'}}</strong></td>
+            <td>
+              <span [class]="'badge badge-' + (req.status === 'COMPLETED' ? 'success' : req.status === 'PENDING' ? 'warning' : 'danger')">
+                {{req.status}}
+              </span>
+            </td>
+            <td>{{req.requestedAt | date:'short'}}</td>
+            <td>{{req.approvedAt ? (req.approvedAt | date:'short') : 'N/A'}}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- All Salaries -->
+  <div class="section">
+    <h3>💰 All Salaries ({{salaries.length}})</h3>
+    
+    <!-- ✅ Show message if no salaries -->
+    <div *ngIf="salaries.length === 0" style="text-align: center; padding: 40px; background: #f8f9fa; border-radius: 10px;">
+      <h4 style="color: #6c757d; margin-bottom: 10px;">No Salaries Found</h4>
+      <p style="color: #6c757d;">Generate monthly salaries first or create individual salary structures for employees.</p>
+    </div>
+
+    <div *ngIf="salaries.length > 0" class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>Employee</th>
+            <th>Month</th>
+            <th>Basic Salary</th>
+            <th>HRA</th>
+            <th>Allowances</th>
+            <th>Deductions</th>
+            <th>Net Salary</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let salary of salaries">
+            <td>{{salary.employeeName}}</td>
+            <td>{{salary.salaryMonth | date:'MMMM yyyy'}}</td>
+            <td>₹{{salary.basicSalary | number:'1.2-2'}}</td>
+            <td>₹{{salary.hra | number:'1.2-2'}}</td>
+            <td>₹{{salary.allowances | number:'1.2-2'}}</td>
+            <td>₹{{salary.deductions | number:'1.2-2'}}</td>
+            <td><strong>₹{{salary.netSalary | number:'1.2-2'}}</strong></td>
+            <td>
+              <span [class]="'badge badge-' + (salary.disbursed ? 'success' : 'warning')">
+                {{salary.disbursed ? 'DISBURSED' : 'PENDING'}}
+              </span>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
 
   <!-- Corporate Account Tab -->
   <div *ngIf="activeTab === 'account'" class="tab-content">
@@ -1209,8 +1440,9 @@
 <div *ngIf="!orgAdmin" style="text-align: center; padding: 50px; color: white;">
   <h2>⚠️ Access Denied</h2>
   <p>Please log in to access the Organization Admin Dashboard</p>
- <button (click)="logout()">Logout</button>
-
+  <button (click)="router.navigate(['/login'])" class="btn-logout" style="margin-top: 20px;">
+    Go to Login
+  </button>
 </div>
 
 </body>

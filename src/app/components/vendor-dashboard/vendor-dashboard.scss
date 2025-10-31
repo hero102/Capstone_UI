@@ -1,0 +1,66 @@
+.vendor-container {
+  padding: 1rem 2rem;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.card {
+  background: #fff;
+  padding: 1.2rem;
+  margin-bottom: 1.5rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.08);
+}
+
+h2 {
+  color: #333;
+  margin-bottom: 1rem;
+}
+
+input, select {
+  width: 100%;
+  padding: 0.5rem;
+  margin-bottom: 0.8rem;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+}
+
+button {
+  background: #0b5ed7;
+  color: white;
+  border: none;
+  padding: 0.6rem 1.2rem;
+  border-radius: 8px;
+  cursor: pointer;
+  width: 100%;
+}
+
+button:hover {
+  background: #084298;
+}
+
+.alert {
+  padding: 0.8rem;
+  margin-bottom: 1rem;
+  border-radius: 8px;
+  text-align: center;
+  color: white;
+}
+
+.alert.success { background: #198754; }
+.alert.error { background: #dc3545; }
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th, td {
+  border-bottom: 1px solid #ddd;
+  padding: 0.5rem;
+  text-align: left;
+}
+
+.status-pending { color: orange; }
+.status-completed { color: green; }
+.status-rejected { color: red; }

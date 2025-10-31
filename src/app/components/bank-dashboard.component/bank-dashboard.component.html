@@ -1,121 +1,409 @@
-<div class="dashboard-container">
 
-  <!-- ======================= -->
-  <!-- 🔝 Top Bar -->
-  <!-- ======================= -->
-  <div class="top-bar">
-    <button class="btn secondary" (click)="showPasswordForm = !showPasswordForm">
-      🔐 Change Password
-    </button>
-
-    <h2>🏦 Bank Dashboard</h2>
-
-    <button class="btn danger" (click)="logout()">
-      🚪 Logout
-    </button>
-  </div>
-
-  <!-- ======================= -->
-  <!-- 🔒 Change Password Form -->
-  <!-- ======================= -->
-  <div *ngIf="showPasswordForm" class="password-form card">
-    <h3>🔐 Update Password</h3>
-    <form [formGroup]="passwordForm" (ngSubmit)="onPasswordSubmit()">
-      <div class="form-group">
-        <label>Old Password</label>
-        <input type="password" formControlName="oldPassword" placeholder="Enter current password" />
-      </div>
-
-      <div class="form-group">
-        <label>New Password</label>
-        <input type="password" formControlName="newPassword" placeholder="Enter new password" />
-      </div>
-
-      <div class="actions">
-        <button type="submit" [disabled]="passwordForm.invalid">Update</button>
-        <button type="button" class="secondary" (click)="showPasswordForm = false">Cancel</button>
-      </div>
-    </form>
-  </div>
-
-  <!-- ======================= -->
-  <!-- 🧑‍💼 Bank Admins Section -->
-  <!-- ======================= -->
-  <section class="card admin-section">
-    <div class="card-header">
-      <h3>Bank Admins</h3>
-      <button (click)="openAddForm()" class="btn primary">➕ Add Admin</button>
+<div class="dashboard-wrapper">
+  <!-- 🎯 Sidebar -->
+  <aside class="sidebar">
+    <div class="logo-section">
+      <div class="logo">🏦</div>
+      <h3>Bank Portal</h3>
+      <p class="bank-name">{{ bankInfo?.bankName || 'Loading...' }}</p>
     </div>
 
-    <!-- ✅ Add/Edit Admin Form -->
-    <div *ngIf="showForm" class="form-area">
-      <form [formGroup]="adminForm" (ngSubmit)="onSubmit()" class="admin-form">
+    <nav class="nav-menu">
+      <button 
+        class="nav-item" 
+        [class.active]="currentView === 'overview'"
+        (click)="switchView('overview')">
+        <span class="icon">📊</span>
+        <span class="text">Dashboard</span>
+      </button>
 
-        <div class="form-group">
-          <label>Name</label>
-          <input formControlName="name" placeholder="Enter full name" />
-          <small *ngIf="adminForm.get('name')?.invalid && adminForm.get('name')?.touched">
-            Required (min 3 characters)
-          </small>
+      <button 
+        class="nav-item" 
+        [class.active]="currentView === 'admins'"
+        (click)="switchView('admins')">
+        <span class="icon">👥</span>
+        <span class="text">Admins</span>
+      </button>
+
+      <button 
+        class="nav-item" 
+        [class.active]="currentView === 'banks'"
+        (click)="switchView('banks')">
+        <span class="icon">🏛️</span>
+        <span class="text">Banks</span>
+      </button>
+
+      <!-- <button class="nav-item" routerLink="/bank-admin/organizations">
+        <span class="icon">🏢</span>
+        <span class="text">Organizations</span>
+      </button>
+
+      <button class="nav-item" routerLink="/bank-admin/transactions">
+        <span class="icon">💰</span>
+        <span class="text">Transactions</span>
+      </button> -->
+
+      <button class="nav-item" routerLink="/bank-admin/reports">
+        <span class="icon">📈</span>
+        <span class="text">Reports</span>
+      </button>
+    </nav>
+
+    <div class="sidebar-footer">
+      <button class="logout-btn" (click)="logout()">
+        <span class="icon">🚪</span>
+        <span class="text">Logout</span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- 📱 Main Content -->
+  <main class="main-content">
+    <!-- 🎯 Header -->
+    <header class="top-header">
+      <div class="header-left">
+        <h1>{{ currentView === 'overview' ? 'Dashboard Overview' : 
+               currentView === 'admins' ? 'Bank Authorirty' : 'Bank Management' }}</h1>
+        <p class="subtitle">Welcome back, {{ bankInfo?.name || 'Bank' }}!</p>
+      </div>
+
+      <div class="header-right">
+        <button class="icon-btn">
+          <span class="badge">3</span>
+          🔔
+        </button>
+        <div class="user-profile">
+          <div class="avatar">{{ (bankInfo?.name || 'A')[0] }}</div>
+          <div class="user-info">
+            <p class="name">{{ bankInfo?.name }}</p>
+            <p class="role">Bank Authorirty</p>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    
+    <div *ngIf="currentView === 'overview'" class="overview-section">
+     
+      <div class="stats-grid">
+        <!-- <div class="stat-card purple">
+          <div class="stat-icon">🏦</div>
+          <div class="stat-details">
+            <p class="stat-value">{{ dashboard.activeBanks }}</p>
+            <p class="stat-label">Active Banks</p>
+          </div>
+          <div class="stat-trend positive">
+            <span>↗</span> +{{ dashboard.monthlyGrowth }}%
+          </div>
+        </div> -->
+
+        <!-- <div class="stat-card blue">
+          <div class="stat-icon">⏳</div>
+          <div class="stat-details">
+            <p class="stat-value">{{ dashboard.pendingBanks }}</p>
+            <p class="stat-label">Pending Approvals</p>
+          </div>
+          <div class="stat-trend" [class.positive]="dashboard.pendingBanks < 5">
+            <span>{{ dashboard.pendingBanks < 5 ? '↘' : '↗' }}</span> {{ dashboard.pendingBanks }}
+          </div>
+        </div> -->
+
+        <div class="stat-card green">
+          <div class="stat-icon">👥</div>
+          <div class="stat-details">
+            <p class="stat-value">{{ dashboard.totalAdmins }}</p>
+            <p class="stat-label">Total Admins</p>
+          </div>
+          <div class="stat-trend positive">
+            <span>↗</span> +8.2%
+          </div>
         </div>
 
-        <div class="form-group">
-          <label>Email</label>
-          <input formControlName="email" type="email" placeholder="Enter email address" />
-          <small *ngIf="adminForm.get('email')?.invalid && adminForm.get('email')?.touched">
-            Valid email required
-          </small>
+        <div class="stat-card orange">
+          <div class="stat-icon">💰</div>
+          <div class="stat-details">
+            <p class="stat-value">{{ formatCurrency(dashboard.totalDisbursed) }}</p>
+            <p class="stat-label">Total Disbursed</p>
+          </div>
+          <div class="stat-trend positive">
+            <span>↗</span> +15.3%
+          </div>
+        </div>
+      </div>
+
+      <!-- Charts & Tables Row -->
+      <div class="content-row">
+        <!-- Top Banks -->
+        <div class="card ranking-card">
+          <div class="card-header">
+            <h3>🏆 Top Performing Banks</h3>
+            <button class="refresh-btn" (click)="loadDashboardData()">🔄</button>
+          </div>
+          <div class="ranking-list">
+            <div *ngFor="let bank of activeBanks" class="ranking-item">
+              <div class="rank-badge">{{ bank.rank }}</div>
+              <div class="bank-info">
+                <p class="bank-name">{{ bank.bankName }}</p>
+                <p class="bank-stat">{{ formatCurrency(bank.totalProcessed) }} processed</p>
+              </div>
+              <div class="growth-badge positive">
+                ↗ {{ bank.growth }}%
+              </div>
+            </div>
+
+            <div *ngIf="activeBanks.length === 0" class="empty-state">
+              <p>No active banks yet</p>
+            </div>
+          </div>
         </div>
 
-        <div class="form-group">
-          <label>Phone</label>
-          <input formControlName="phoneNumber" maxlength="10" placeholder="10-digit mobile number" />
-          <small *ngIf="adminForm.get('phoneNumber')?.invalid && adminForm.get('phoneNumber')?.touched">
-            Valid 10-digit mobile
-          </small>
+        <!-- Recent Activity -->
+        <div class="card activity-card">
+          <div class="card-header">
+            <h3>📋 Recent Activity</h3>
+          </div>
+          <div class="activity-list">
+            <div *ngFor="let activity of recentActivities" 
+                 class="activity-item"
+                 [class]="'activity-' + activity.type">
+              <div class="activity-icon">{{ activity.icon }}</div>
+              <div class="activity-details">
+                <p class="activity-text">{{ activity.text }}</p>
+                <p class="activity-time">{{ activity.time }}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Pending Banks -->
+      <div *ngIf="pendingBanks.length > 0" class="card pending-card">
+        <div class="card-header">
+          <h3>⏳ Pending Bank Approvals ({{ pendingBanks.length }})</h3>
+        </div>
+        <div class="pending-grid">
+          <div *ngFor="let bank of pendingBanks" class="pending-bank-card">
+            <div class="bank-header">
+              <h4>{{ bank.bankName }}</h4>
+              <span class="status-badge pending">Pending</span>
+            </div>
+            <div class="bank-details">
+              <p><strong>📧</strong> {{ bank.email }}</p>
+              <p><strong>📱</strong> {{ bank.phoneNumber }}</p>
+              <p><strong>🔢</strong> {{ bank.ifscCode }}</p>
+            </div>
+            <div class="action-buttons">
+              <button class="btn-approve" (click)="approveBank(bank)">
+                ✅ Approve
+              </button>
+              <button class="btn-reject" (click)="rejectBank(bank)">
+                ❌ Reject
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 👥 ADMINS VIEW -->
+    <div *ngIf="currentView === 'admins'" class="admins-section">
+      <div class="section-header">
+        <h2>Bank Administrators ({{ bankAdmins.length }})</h2>
+        <button class="btn-primary" (click)="openAddForm()">
+          ➕ Add New Admin
+        </button>
+      </div>
+
+      <!-- Admin Cards -->
+      <div class="admin-grid">
+        <div *ngFor="let admin of bankAdmins" class="admin-card">
+          <div class="admin-card-header">
+            <div class="admin-avatar">{{ admin.name[0] }}</div>
+            <div class="admin-info">
+              <h4>{{ admin.name }}</h4>
+              <p class="admin-role">Bank Administrator</p>
+            </div>
+            <span class="status-badge" [class]="admin.status?.toLowerCase()">
+              {{ admin.status }}
+            </span>
+          </div>
+
+          <div class="admin-card-body">
+            <div class="info-item">
+              <span class="icon">📧</span>
+              <span>{{ admin.email }}</span>
+            </div>
+            <div class="info-item">
+              <span class="icon">📱</span>
+              <span>{{ admin.phoneNumber }}</span>
+            </div>
+            <div class="info-item" *ngIf="admin.bankName">
+              <span class="icon">🏦</span>
+              <span>{{ admin.bankName }}</span>
+            </div>
+          </div>
+
+          <div class="admin-card-footer">
+            <button class="btn-icon" (click)="editAdmin(admin)" title="Edit">
+              ✏️
+            </button>
+            <button class="btn-icon danger" (click)="deleteAdmin(admin.bankAdminId!)" title="Delete">
+              🗑️
+            </button>
+          </div>
         </div>
 
-        <div class="form-group">
-          <label>Document (PDF / JPG / PNG — max 5MB)</label>
-          <input type="file" (change)="onFileChange($event)" accept=".pdf,.jpg,.jpeg,.png" />
-        </div>
-
-        <div class="actions">
-          <button type="submit" class="btn primary" [disabled]="loading">
-            {{ isEditing ? 'Update' : 'Add' }}
+        <div *ngIf="bankAdmins.length === 0" class="empty-state-large">
+          <div class="empty-icon">👥</div>
+          <h3>No Admins Found</h3>
+          <p>Add your first bank administrator to get started</p>
+          <button class="btn-primary" (click)="openAddForm()">
+            ➕ Add First Admin
           </button>
-          <button type="button" class="btn secondary" (click)="resetForm()">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 🏛️ BANKS VIEW -->
+    <div *ngIf="currentView === 'banks'" class="banks-section">
+      <div class="section-header">
+        <h2>All Banks ({{ dashboard.activeBanks + dashboard.pendingBanks }})</h2>
+        <div class="filters">
+          <select class="filter-select">
+            <option>All Status</option>
+            <option>Approved</option>
+            <option>Pending</option>
+            <option>Rejected</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Banks Table -->
+      <div class="card table-card">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Bank Name</th>
+              <th>IFSC Code</th>
+              <th>Contact</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let bank of pendingBanks">
+              <td>
+                <div class="bank-cell">
+                  <div class="bank-icon">🏦</div>
+                  <span>{{ bank.bankName }}</span>
+                </div>
+              </td>
+              <td>{{ bank.ifscCode }}</td>
+              <td>{{ bank.email }}</td>
+              <td>
+                <span class="status-badge pending">{{ bank.approvalStatus }}</span>
+              </td>
+              <td>
+                <div class="action-btns">
+                  <button class="btn-sm btn-success" (click)="approveBank(bank)">
+                    Approve
+                  </button>
+                  <button class="btn-sm btn-danger" (click)="rejectBank(bank)">
+                    Reject
+                  </button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- <div *ngIf="pendingBanks.length === 0" class="empty-table">
+          <p>✅ No pending banks</p>
+        </div> -->
+      </div>
+    </div>
+  </main>
+
+  <!-- 🎨 Add/Edit Admin Modal -->
+  <div *ngIf="showForm" class="modal-overlay" (click)="resetForm()">
+    <div class="modal-content" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2>{{ isEditing ? '✏️ Edit Admin' : '➕ Add New Admin' }}</h2>
+        <button class="close-btn" (click)="resetForm()">✕</button>
+      </div>
+
+      <form [formGroup]="adminForm" (ngSubmit)="onSubmit()" class="admin-form">
+        <div class="form-group">
+          <label>👤 Full Name</label>
+          <input 
+            type="text" 
+            formControlName="name" 
+            placeholder="Enter full name"
+            class="form-control"
+          />
+          <span *ngIf="adminForm.get('name')?.invalid && adminForm.get('name')?.touched" 
+                class="error-text">
+            Name is required (min 3 characters)
+          </span>
+        </div>
+
+        <div class="form-group">
+          <label>📧 Email Address</label>
+          <input 
+            type="email" 
+            formControlName="email" 
+            placeholder="admin@bank.com"
+            class="form-control"
+          />
+          <span *ngIf="adminForm.get('email')?.invalid && adminForm.get('email')?.touched" 
+                class="error-text">
+            Valid email is required
+          </span>
+        </div>
+
+        <div class="form-group">
+          <label>📱 Phone Number</label>
+          <input 
+            type="tel" 
+            formControlName="phoneNumber" 
+            placeholder="10-digit mobile number"
+            class="form-control"
+          />
+          <span *ngIf="adminForm.get('phoneNumber')?.invalid && adminForm.get('phoneNumber')?.touched" 
+                class="error-text">
+            Valid 10-digit number required
+          </span>
+        </div>
+
+        <div class="form-group">
+          <label>📄 Upload Document (Optional)</label>
+          <input 
+            type="file" 
+            (change)="onFileChange($event)"
+            accept=".pdf,.doc,.docx"
+            class="file-input"
+          />
+          <p *ngIf="selectedFile" class="file-name">
+            📎 {{ selectedFile.name }}
+          </p>
+        </div>
+
+        <div class="form-actions">
+          <button type="button" class="btn-secondary" (click)="resetForm()">
+            Cancel
+          </button>
+          <button type="submit" class="btn-primary" [disabled]="adminForm.invalid || loading">
+            <span *ngIf="!loading">{{ isEditing ? '✅ Update' : '➕ Add' }} Admin</span>
+            <span *ngIf="loading">⏳ Processing...</span>
+          </button>
         </div>
       </form>
     </div>
+  </div>
 
-    <!-- ✅ Admins Table -->
-    <table class="list admins-table" *ngIf="bankAdmins.length">
-      <thead>
-        <tr>
-          <th>Name</th>
-          <th>Email</th>
-          <th>Phone</th>
-          <th>Document</th>
-          <th>Action</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr *ngFor="let admin of bankAdmins">
-          <td>{{ admin.name }}</td>
-          <td>{{ admin.email }}</td>
-          <td>{{ admin.phoneNumber }}</td>
-          <td>
-            <a *ngIf="admin.documentUrl" [href]="admin.documentUrl" target="_blank">View</a>
-          </td>
-          <td class="actions-cell">
-            <button class="btn icon" (click)="editAdmin(admin)">✏️</button>
-            <button class="btn icon danger" (click)="deleteAdmin(admin.bankAdminId!)">🗑️</button>
-          </td>
-        </tr>
-      </tbody>
-    </table>
-
-    <p *ngIf="!bankAdmins.length" class="no-data">No Bank Admins found.</p>
-  </section>
+  <!-- ⏳ Loading Overlay -->
+  <div *ngIf="loading" class="loading-overlay">
+    <div class="spinner"></div>
+    <p>Loading...</p>
+  </div>
 </div>

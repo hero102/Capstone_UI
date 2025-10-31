@@ -1,22 +1,50 @@
 import { Component, OnInit } from '@angular/core';
-import { EmployeeService } from '../../../services/employee';
 import { AuthService } from '../../../services/auth';
+import { CommonModule, NgIf } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { CommonModule, NgClass, NgIf } from '@angular/common';
+import { RouterModule } from '@angular/router';
+
+
 @Component({
   selector: 'app-dashboard',
-  imports:[FormsModule,CommonModule,NgIf],
-  templateUrl: './dashboard.html'
+  standalone: true,
+  imports: [CommonModule, FormsModule, NgIf,RouterModule],
+  templateUrl: './dashboard.html',
 })
 export class DashboardComponent implements OnInit {
-  data: any;
+  data: any = null;
   empId!: number;
+  loading = false;
+  errorMessage = '';
 
-  constructor(private empService: EmployeeService, private auth: AuthService) {}
+  constructor(private auth: AuthService) {}
 
   ngOnInit(): void {
+    // ✅ Get employee ID from localStorage/session
     this.empId = this.auth.getEmployeeId();
-    this.empService.getDashboard(this.empId).subscribe((res) => (this.data = res));
+
+    if (!this.empId || this.empId === 0) {
+      console.error('❌ Employee ID not found in localStorage');
+      this.errorMessage = 'Session expired or invalid login. Please log in again.';
+      return;
+    }
+
+    console.log('✅ Employee ID found:', this.empId);
+
+    // ✅ Fetch employee dashboard data
+    this.loading = true;
+    this.auth.getEmployeeDashboard(this.empId).subscribe({
+      next: (res) => {
+        this.data = res;
+        this.loading = false;
+        console.log('✅ Employee dashboard data loaded:', res);
+      },
+      error: (err) => {
+        this.loading = false;
+        this.errorMessage = err.error?.message || 'Failed to load employee dashboard.';
+        console.error('❌ Error fetching employee dashboard:', err);
+      },
+    });
   }
 
   logout() {

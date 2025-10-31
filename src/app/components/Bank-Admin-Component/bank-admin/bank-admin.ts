@@ -76,6 +76,7 @@ interface VendorPayment {
   status: string;
   transactionId: string;
   approvedAt: string;
+  organizationId: number;
 }
 
 interface VendorBankAccount {
@@ -99,7 +100,7 @@ export class BankAdminComponent implements OnInit {
   private apiUrl = 'http://localhost:8080/api';
 
   bankAdmin: BankAdmin | null = null;
-  activeTab = 'dashboard';
+  activeTab: any = 'dashboard';
 
   // Dashboard Data
   dashboardStats: any = {
@@ -134,17 +135,16 @@ export class BankAdminComponent implements OnInit {
   // Concern Management
   bankAdminConcerns: Concern[] = [];
   selectedConcern: Concern | null = null;
-  concernReplyForm = {
-    concernId: 0,
-    replyMessage: '',
-    replyBy: 'BANK_ADMIN',
-    newStatus: 'RESOLVED'
-  };
+concernReplyForm = {
+  concernId: 0,
+  replyMessage: '',
+  replyBy: 'BANK_ADMIN',
+  newStatus: 'RESOLVED_BY_BANK'  // ✅ Change to this
+};
 
   // Vendor Payment Management
   pendingVendorPayments: VendorPayment[] = [];
   allVendorPayments: VendorPayment[] = [];
-  pendingVendorAccounts: VendorBankAccount[] = [];
 
   // UI States
   loading = false;
@@ -161,59 +161,51 @@ export class BankAdminComponent implements OnInit {
     this.loadBankAdminData();
   }
 
- loadBankAdminData(): void {
-  // 1️⃣ Get localStorage values
-  const storedUsername = localStorage.getItem('username');
-  const storedRole = localStorage.getItem('role');
+  loadBankAdminData(): void {
+    const storedUsername = localStorage.getItem('username');
+    const storedRole = localStorage.getItem('role');
 
-  console.log('BankAdmin load:', storedUsername, storedRole);
+    console.log('BankAdmin load:', storedUsername, storedRole);
 
-  // 2️⃣ If not logged in as bank admin, clear storage & redirect
-  if (!storedUsername || storedRole !== 'ROLE_BANK_ADMIN') {
-    console.warn('Bank Admin not logged in or role mismatch, redirecting to login...');
-    localStorage.clear(); // optional, but safe
-    this.router.navigate(['/bank-admin/login']);
-    return; // stop further execution
-  }
+    if (!storedUsername || storedRole !== 'ROLE_BANK_ADMIN') {
+      console.warn('Bank Admin not logged in or role mismatch, redirecting to login...');
+      localStorage.clear();
+      this.router.navigate(['/bank-admin/login']);
+      return;
+    }
 
-  // 3️⃣ Prevent multiple HTTP calls if already loaded
-  if (this.bankAdmin) {
-    console.log('Bank Admin already loaded, skipping fetch.');
-    return;
-  }
+    if (this.bankAdmin) {
+      console.log('Bank Admin already loaded, skipping fetch.');
+      return;
+    }
 
-  // 4️⃣ Fetch bank admin details from backend
-  this.loading = true;
-  this.http.get<BankAdmin>(`${this.apiUrl}/bank-admins/by-username/${storedUsername}`)
-    .subscribe({
-      next: (admin) => {
-        if (!admin) {
-          console.error('Bank Admin not found in backend');
-          this.showMessage('Bank Admin not found', 'error');
-          localStorage.clear(); // clear to avoid repeated redirects
+    this.loading = true;
+    this.http.get<BankAdmin>(`${this.apiUrl}/bank-admins/by-username/${storedUsername}`)
+      .subscribe({
+        next: (admin) => {
+          if (!admin) {
+            console.error('Bank Admin not found in backend');
+            this.showMessage('Bank Admin not found', 'error');
+            localStorage.clear();
+            this.router.navigate(['/bank-admin/login']);
+            return;
+          }
+
+          this.bankAdmin = admin;
+          console.log('Bank Admin loaded:', admin);
+
+          this.loadDashboardData();
+          this.loading = false;
+        },
+        error: (err) => {
+          console.error('Failed to fetch Bank Admin details', err);
+          this.showMessage('Failed to load bank admin data', 'error');
+          localStorage.clear();
           this.router.navigate(['/bank-admin/login']);
-          return;
+          this.loading = false;
         }
-
-        // ✅ Save bank admin locally
-        this.bankAdmin = admin;
-        console.log('Bank Admin loaded:', admin);
-
-        // 5️⃣ Load dashboard and related data
-        this.loadDashboardData();
-        this.loading = false;
-      },
-      error: (err) => {
-        console.error('Failed to fetch Bank Admin details', err);
-        this.showMessage('Failed to load bank admin data', 'error');
-        localStorage.clear(); // clear to avoid repeated redirects
-        this.router.navigate(['/bank-admin/login']);
-        this.loading = false;
-      }
-    });
-}
-
-
+      });
+  }
 
   loadDashboardData(): void {
     if (!this.bankAdmin) return;
@@ -236,7 +228,6 @@ export class BankAdminComponent implements OnInit {
     this.loadPendingDisbursements();
     this.loadBankAdminConcerns();
     this.loadPendingVendorPayments();
-    this.loadPendingVendorAccounts();
   }
 
   // ==================== ORGANIZATION MANAGEMENT ====================
@@ -281,48 +272,47 @@ export class BankAdminComponent implements OnInit {
   }
 
   addOrganization(): void {
-  if (!this.bankAdmin) return;
+    if (!this.bankAdmin) return;
 
-  if (!this.organizationForm.name ||
-      !this.organizationForm.officialEmail ||
-      !this.organizationForm.registrationNumber ||
-      !this.organizationForm.document) {
-    this.showMessage('Please fill all required fields', 'error');
-    return;
-  }
-
-  this.loading = true;
-  const formData = new FormData();
-
-  const orgData = {
-    name: this.organizationForm.name,
-    officialEmail: this.organizationForm.officialEmail,
-    contactNumber: this.organizationForm.contactNumber,
-    address: this.organizationForm.address,
-    registrationNumber: this.organizationForm.registrationNumber
-  };
-
-  formData.append('data', JSON.stringify(orgData));
-  formData.append('document', this.organizationForm.document!);
-
-  this.http.post(
-    `${this.apiUrl}/organizations/register/${this.bankAdmin.bankAdminId}`,
-    formData
-  ).subscribe({
-    next: () => {
-      this.showMessage('Organization registered successfully', 'success');
-      this.resetOrgForm();
-      this.loadPendingOrganizations();
-      this.loadAllOrganizations();
-      this.loading = false;
-    },
-    error: (err) => {
-      this.showMessage(err.error?.message || 'Failed to register organization', 'error');
-      this.loading = false;
+    if (!this.organizationForm.name ||
+        !this.organizationForm.officialEmail ||
+        !this.organizationForm.registrationNumber ||
+        !this.organizationForm.document) {
+      this.showMessage('Please fill all required fields', 'error');
+      return;
     }
-  });
-}
 
+    this.loading = true;
+    const formData = new FormData();
+
+    const orgData = {
+      name: this.organizationForm.name,
+      officialEmail: this.organizationForm.officialEmail,
+      contactNumber: this.organizationForm.contactNumber,
+      address: this.organizationForm.address,
+      registrationNumber: this.organizationForm.registrationNumber
+    };
+
+    formData.append('data', JSON.stringify(orgData));
+    formData.append('document', this.organizationForm.document!);
+
+    this.http.post(
+      `${this.apiUrl}/organizations/register/${this.bankAdmin.bankAdminId}`,
+      formData
+    ).subscribe({
+      next: () => {
+        this.showMessage('Organization registered successfully', 'success');
+        this.resetOrgForm();
+        this.loadPendingOrganizations();
+        this.loadAllOrganizations();
+        this.loading = false;
+      },
+      error: (err) => {
+        this.showMessage(err.error?.message || 'Failed to register organization', 'error');
+        this.loading = false;
+      }
+    });
+  }
 
   approveOrganization(orgId: number): void {
     if (!this.bankAdmin || !confirm('Approve this organization?')) return;
@@ -331,10 +321,7 @@ export class BankAdminComponent implements OnInit {
     this.http.put(
       `${this.apiUrl}/organizations/approve/${this.bankAdmin.bankAdminId}/${orgId}`,
       {},
-        
-      
-      { responseType: 'text' as 'json' }   // ✅ add this line
-
+      { responseType: 'text' as 'json' }
     ).subscribe({
       next: () => {
         this.showMessage('Organization approved successfully', 'success');
@@ -469,45 +456,85 @@ export class BankAdminComponent implements OnInit {
   }
 
   // ==================== CONCERN MANAGEMENT ====================
+loadBankAdminConcerns(): void {
+  if (!this.bankAdmin) return;
 
-  loadBankAdminConcerns(): void {
-    if (!this.bankAdmin) return;
+  this.http.get<Concern[]>(
+    `${this.apiUrl}/concerns/bank-admin/${this.bankAdmin.bankAdminId}`
+  ).subscribe({
+    next: (data) => {
+      this.bankAdminConcerns = data;
+      // ✅ Update status filter
+      this.dashboardStats.pendingConcerns = data.filter(c => 
+        c.status === 'OPEN' || 
+        c.status === 'VERIFIED_BY_ORG' || 
+        c.status === 'FORWARDED_TO_BANK'
+      ).length;
+    },
+    error: (err) => {
+      console.error('Failed to load concerns', err);
+    }
+  });
+}
 
-    this.http.get<Concern[]>(
-      `${this.apiUrl}/concerns/bank-admin/${this.bankAdmin.bankAdminId}`
-    ).subscribe({
-      next: (data) => {
-        this.bankAdminConcerns = data;
-        this.dashboardStats.pendingConcerns = data.filter(c => 
-          c.status === 'OPEN' || c.status === 'VERIFIED_BY_ORG'
-        ).length;
-      },
-      error: (err) => {
-        console.error('Failed to load concerns', err);
-      }
-    });
+  // ==================== CONCERN MANAGEMENT - UPDATED METHODS ====================
+
+openConcernReplyModal(concern: Concern): void {
+  console.log('🟢 Opening Modal for:', concern);
+  
+  if (!concern || !concern.concernId) {
+    console.error('❌ Invalid concern data');
+    alert('Cannot open concern - invalid data');
+    return;
   }
 
-  openConcernReplyModal(concern: Concern): void {
-    this.selectedConcern = concern;
-    this.concernReplyForm = {
-      concernId: concern.concernId,
-      replyMessage: '',
-      replyBy: 'BANK_ADMIN',
-      newStatus: 'RESOLVED'
-    };
-    this.showConcernReplyModal = true;
+  this.selectedConcern = concern;
+  this.concernReplyForm = {
+    concernId: concern.concernId,
+    replyMessage: '',
+    replyBy: 'BANK_ADMIN',
+    newStatus: 'RESOLVED_BY_BANK'  // ✅ Must be this
+  };
+
+  this.showConcernReplyModal = true;
+  console.log('✅ Modal opened successfully');
+   this.showConcernReplyModal = true;
+  
+  console.log('✅ Modal State:', {
+    showModal: this.showConcernReplyModal,
+    concern: this.selectedConcern,
+    form: this.concernReplyForm
+  });
+}
+
+  // Show modal
+ 
+
+closeConcernReplyModal(): void {
+  console.log('🔴 Closing modal');
+  this.showConcernReplyModal = false;
+  this.selectedConcern = null;
+  this.concernReplyForm = {
+    concernId: 0,
+    replyMessage: '',
+    replyBy: 'BANK_ADMIN',
+    newStatus: 'RESOLVED_BY_BANK'  // ✅ Must be this
+  };
+}
+
+stopPropagation(event: Event): void {
+  event.stopPropagation();
+}
+
+
+
+  // ✅ NEW METHOD: Handle modal click events properly
+  onModalOverlayClick(): void {
+    this.closeConcernReplyModal();
   }
 
-  closeConcernReplyModal(): void {
-    this.showConcernReplyModal = false;
-    this.selectedConcern = null;
-    this.concernReplyForm = {
-      concernId: 0,
-      replyMessage: '',
-      replyBy: 'BANK_ADMIN',
-      newStatus: 'RESOLVED'
-    };
+  onModalContentClick(event: Event): void {
+    event.stopPropagation();
   }
 
   replyToConcern(): void {
@@ -543,51 +570,33 @@ export class BankAdminComponent implements OnInit {
     return priorityMap[priority] || 'priority-medium';
   }
 
-  getConcernStatusClass(status: string): string {
-    const statusMap: {[key: string]: string} = {
-      'OPEN': 'badge-warning',
-      'VERIFIED_BY_ORG': 'badge-info',
-      'RESOLVED': 'badge-success',
-      'CLOSED': 'badge-secondary'
-    };
-    return statusMap[status] || 'badge-secondary';
-  }
-
-  // ==================== VENDOR PAYMENT MANAGEMENT ====================
+ getConcernStatusClass(status: string): string {
+  const statusMap: {[key: string]: string} = {
+    'OPEN': 'badge-warning',
+    'VERIFIED_BY_ORG': 'badge-info',
+    'FORWARDED_TO_BANK': 'badge-info',
+    'RESOLVED_BY_ORG': 'badge-success',
+    'RESOLVED_BY_BANK': 'badge-success'
+  };
+  return statusMap[status] || 'badge-secondary';
+}
 
   loadPendingVendorPayments(): void {
-    if (!this.bankAdmin) return;
+    if (!this.bankAdmin) {
+      console.warn('⚠️ Bank admin data not loaded yet.');
+      return;
+    }
 
-    // Load all vendor payments for organizations under this bank admin
-    this.allOrganizations.forEach(org => {
-      this.http.get<VendorPayment[]>(
-        `${this.apiUrl}/vendors/payments/${org.organizationId}`
-      ).subscribe({
-        next: (data) => {
-          const pending = data.filter(p => p.status === 'PENDING');
-          this.pendingVendorPayments = [...this.pendingVendorPayments, ...pending];
-          this.allVendorPayments = [...this.allVendorPayments, ...data];
-          this.dashboardStats.pendingVendorPayments = this.pendingVendorPayments.length;
-        },
-        error: (err) => {
-          console.error('Failed to load vendor payments', err);
-        }
-      });
-    });
-  }
-
-  loadPendingVendorAccounts(): void {
-    if (!this.bankAdmin) return;
-
-    // Note: You'll need to add this endpoint in your backend
-    this.http.get<VendorBankAccount[]>(
-      `${this.apiUrl}/vendors/bank-accounts/pending/${this.bankAdmin.bankAdminId}`
+    this.http.get<VendorPayment[]>(
+      `${this.apiUrl}/vendors/payments/bank-admin/${this.bankAdmin.bankAdminId}/pending`
     ).subscribe({
       next: (data) => {
-        this.pendingVendorAccounts = data;
+        console.log('✅ Loaded vendor payments:', data);
+        this.pendingVendorPayments = data;
+        this.dashboardStats.pendingVendorPayments = data.length;
       },
       error: (err) => {
-        console.error('Failed to load pending vendor accounts', err);
+        console.error('❌ Failed to load pending vendor payments', err);
       }
     });
   }
@@ -624,7 +633,6 @@ export class BankAdminComponent implements OnInit {
     ).subscribe({
       next: () => {
         this.showMessage('Vendor account approved successfully', 'success');
-        this.loadPendingVendorAccounts();
         this.loading = false;
       },
       error: (err) => {
@@ -648,7 +656,6 @@ export class BankAdminComponent implements OnInit {
     ).subscribe({
       next: () => {
         this.showMessage('Vendor account rejected', 'success');
-        this.loadPendingVendorAccounts();
         this.loading = false;
       },
       error: () => {
@@ -660,8 +667,12 @@ export class BankAdminComponent implements OnInit {
 
   // ==================== UTILITIES ====================
 
-  setActiveTab(tab: string): void {
+  setActiveTab(tab: any): void {
+    console.log("🔹 Switching to tab:", tab);
     this.activeTab = tab;
+    if (tab === 'vendors') {
+      this.loadPendingVendorPayments();
+    }
   }
 
   showMessage(msg: string, type: 'success' | 'error' | 'info'): void {
@@ -672,12 +683,11 @@ export class BankAdminComponent implements OnInit {
     }, 5000);
   }
 
-logout(): void {
-  localStorage.removeItem('username');
-  localStorage.removeItem('email');
-  localStorage.removeItem('role');
-  localStorage.removeItem('token');
-  this.router.navigate(['/bank-admin/login']);
-}
-
+  logout(): void {
+    localStorage.removeItem('username');
+    localStorage.removeItem('email');
+    localStorage.removeItem('role');
+    localStorage.removeItem('token');
+    this.router.navigate(['/bank-admin/login']);
+  }
 }

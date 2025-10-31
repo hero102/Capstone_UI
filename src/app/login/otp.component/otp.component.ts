@@ -85,8 +85,8 @@ export class OtpVerificationComponent implements OnInit {
                  case 'ROLE_ORGANISATION_ADMIN':
          window.location.href = '/org-admin/dashboard';
         break;
-              case 'ROLE_CUSTOMER':
-                window.location.href = '/customer/dashboard';
+              case 'ROLE_EMPLOYEE':
+                window.location.href = '/employee/dashboard';
                 break;
               default:
                 window.location.href = '/dashboard';
